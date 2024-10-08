@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import {IBM_Plex_Sans} from "next/font/google";
 import { cn } from "@/lib/utils";
 import "./globals.css";
-import {ClerkProvider,
-  SignInButton,
-  SignedIn,
-  SignedOut,
-  UserButton} from '@clerk/nextjs';
+import {ClerkProvider} from '@clerk/nextjs';
+  // SignInButton,
+  // SignedIn,
+  // SignedOut,
+  // UserButton
 
 const IBMPlex = IBM_Plex_Sans({
   subsets: ["latin"],
