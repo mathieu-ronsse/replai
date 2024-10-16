@@ -1,8 +1,6 @@
 /* eslint-disable prefer-const */
 /* eslint-disable no-prototype-builtins */
 import { type ClassValue, clsx } from "clsx";
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import qs from "qs";
 import { twMerge } from "tailwind-merge";
 
