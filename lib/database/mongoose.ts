@@ -15,7 +15,6 @@ if(!cached){
 }
 
 export const connectToDatabase = async () => {
-    console.log("=== TEST Mongoose connectToDatabase")
     // first we check if we already have conn (if so : exit)
     if(cached.conn) return cached.conn;
     

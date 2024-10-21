@@ -9,7 +9,6 @@ import { handleError } from "../utils";
 // CREATE
 export async function createUser(user: CreateUserParams) {
   try {
-    console.log("=== TEST UserActions CreateUser")
     await connectToDatabase();
 
     const newUser = await User.create(user);
@@ -23,7 +22,6 @@ export async function createUser(user: CreateUserParams) {
 // READ
 export async function getUserById(userId: string) {
   try {
-    console.log("=== TEST UserActions getUserById")
     await connectToDatabase();
 
     const user = await User.findOne({ clerkId: userId });
@@ -56,6 +54,7 @@ export async function updateUser(clerkId: string, user: UpdateUserParams) {
 // DELETE
 export async function deleteUser(clerkId: string) {
   try {
+  
     await connectToDatabase();
 
     // Find user to delete
