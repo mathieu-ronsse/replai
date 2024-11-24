@@ -52,10 +52,12 @@ const TransformedImage = ({ image, type, title, transformationConfig, isTransfor
             placeholder={dataUrl as PlaceholderValue}
             className="transformed-image"
             onLoad={() => {
+              // eslint-disable-next-line @typescript-eslint/no-unused-expressions
               setIsTransforming && setIsTransforming(false);
             }}
             onError={() => {
               debounce(() => {
+                // eslint-disable-next-line @typescript-eslint/no-unused-expressions
                 setIsTransforming && setIsTransforming(false);
               }, 8000)() // CCCC DDDD if nothing happens after 8 seconds
               // () = self-invoked debounce
