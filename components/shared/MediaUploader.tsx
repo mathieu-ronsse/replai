@@ -1,10 +1,10 @@
-//"use client";
+"use client"
 
 import { useToast } from "@/components/ui/use-toast"
-import { dataUrl, getImageSize } from "@/lib/utils";
+import { dataUrl, getImageSize } from "@/lib/utils"
 import { CldImage, CldUploadWidget } from "next-cloudinary"
-import { PlaceholderValue } from "next/dist/shared/lib/get-img-props";
-import Image from "next/image";
+import { PlaceholderValue } from "next/dist/shared/lib/get-img-props"
+import Image from "next/image"
 
 type MediaUploaderProps = {
   onValueChange: (value: string) => void;
@@ -12,6 +12,15 @@ type MediaUploaderProps = {
   publicId: string;
   image: any;
   type: string;
+}
+
+type UploadResult = {
+  info?: {
+    public_id: string;
+    width: number;
+    height: number;
+    secure_url: string;
+  };
 }
 
 const MediaUploader = ({
@@ -23,22 +32,22 @@ const MediaUploader = ({
 }: MediaUploaderProps) => {
   const { toast } = useToast()
 
-  const onUploadSuccessHandler = (result: any) => {
+  const onUploadSuccessHandler = (result: UploadResult) => {
+    if (!result?.info) return;
+
     setImage((prevState: any) => ({
       ...prevState,
-      publicId: result?.info?.public_id,
-      width: result?.info?.width,
-      height: result?.info?.height,
-      secureURL: result?.info?.secure_url
+      publicId: result.info.public_id,
+      width: result.info.width,
+      height: result.info.height,
+      secureURL: result.info.secure_url
     }))
 
-    // update publicId in form (let app know: display img)
-    // TypeError: onValueChange is not a function
-    onValueChange(result?.info?.public_id) 
+    onValueChange(result.info.public_id)
 
     toast({
       title: 'Image uploaded successfully',
-      description: '1 credit was deducted from your account',
+      description: 'You can now apply transformations to your image',
       duration: 5000,
       className: 'success-toast' 
     })
@@ -84,7 +93,7 @@ const MediaUploader = ({
               </div>
             </>
           ): (
-            <div className="media-uploader_cta" onClick={() => open()}>
+            <div className="media-uploader_cta" onClick={() => open?.()}>
               <div className="media-uploader_cta-image">
                 <Image 
                   src="/assets/icons/add.svg"
@@ -93,7 +102,7 @@ const MediaUploader = ({
                   height={24}
                 />
               </div>
-                <p className="p-14-medium">Click here to upload image</p>
+              <p className="p-14-medium">Click here to upload image</p>
             </div>
           )}
         </div>

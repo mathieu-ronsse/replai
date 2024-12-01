@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
+import Image from "next/image"
 
 import {
   Select,
@@ -14,13 +15,7 @@ import {
 
 import { Button } from "@/components/ui/button"
 import {
-  Form/*,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage*/,
+  Form,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { aspectRatioOptions, creditFee, defaultValues, transformationTypes } from '@/constants'
@@ -29,11 +24,12 @@ import { useEffect, useState, useTransition } from 'react'
 import { AspectRatioKey, debounce, deepMergeObjects } from '@/lib/utils'
 import { updateCredits } from "@/lib/actions/user.actions"
 import MediaUploader from "./MediaUploader"
-import TransformedImage from "./TransformedImage"
-import { getCldImageUrl } from "next-cloudinary"
 import { addImage, updateImage } from "@/lib/actions/image.actions"
 import { useRouter } from "next/navigation"
 import { InsufficientCreditsModal } from "./InsufficientCreditsModal"
+import { useToast } from "../ui/use-toast"
+import { replicateTransform } from "@/lib/replicate"
+import ImageCarousel from "./ImageCarousel"
 
 export const formSchema = z.object({
   title: z.string(),
@@ -45,14 +41,17 @@ export const formSchema = z.object({
 
 const TransformationForm = ({ action, data = null, userId, type, creditBalance, config = null }: TransformationFormProps) => {
   const transformationType = transformationTypes[type];
-  const [image,setImage] = useState(data);
-  const [newTransformation,setNewTransformation] = useState<Transformations|null>(null);
+  const [image, setImage] = useState(data);
+  const [newTransformation, setNewTransformation] = useState<Transformations|null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTransforming, setIsTransforming] = useState(false);
-  const [transformationConfig, setTransformationConfig] = useState(config)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [transformationConfig, setTransformationConfig] = useState(config);
+  const [hasTransformation, setHasTransformation] = useState(false);
+  const [transformedImages, setTransformedImages] = useState<Array<{ cloudinaryUrl: string }>>([]);
+  const [selectedTransformedImage, setSelectedTransformedImage] = useState<{ cloudinaryUrl: string } | null>(null);
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
+  const { toast } = useToast()
 
   const initialValues = data && action === 'Update' ? {
     title: data?.title,
@@ -60,30 +59,19 @@ const TransformationForm = ({ action, data = null, userId, type, creditBalance, 
     color: data?.color,
     prompt: data?.prompt,
     publicId: data?.publicId,
-  } : defaultValues 
-  // if update: get values from 'data', else get defaultValues from constant 'defaultValues' ("") 
+  } : defaultValues
 
-  // 1. Define your form.
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: initialValues,
   })
  
-  // 2. Define a submit handler.
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    // Here we need to use the AI features of Cloudinary
-    //console.log(values)
+    if (!hasTransformation || !selectedTransformedImage) return;
+    
     setIsSubmitting(true);
 
-    if(data || image) {
-      // pass options-object, spread all transformation config-info => returns URL
-      const transformationUrl = getCldImageUrl({
-        width: image?.width,
-        height: image?.height,
-        src: image?.publicId,
-        ...transformationConfig
-      })
-
+    try {
       const imageData = {
         title: values.title,
         publicId: image?.publicId,
@@ -92,51 +80,50 @@ const TransformationForm = ({ action, data = null, userId, type, creditBalance, 
         height: image?.height,
         config: transformationConfig,
         secureURL: image?.secureURL,
-        transformationURL: transformationUrl,
+        transformationURL: selectedTransformedImage.cloudinaryUrl,
         aspectRatio: values.aspectRatio,
         prompt: values.prompt,
         color: values.color,
       }
 
       if(action === 'Add') {
-        try {
-          const newImage = await addImage({
-            image: imageData,
-            userId,
-            path: '/'
-          })
+        const newImage = await addImage({
+          image: imageData,
+          userId,
+          path: '/'
+        })
 
-          if(newImage) {
-            form.reset()
-            setImage(data)
-            router.push(`/transformations/${newImage._id}`)
-          }
-        } catch (error) {
-          console.log(error);
+        if(newImage) {
+          form.reset()
+          setImage(data)
+          router.push(`/transformations/${newImage._id}`)
         }
       }
 
       if(action === 'Update') {
-        try {
-          const updatedImage = await updateImage({
-            image: {
-              ...imageData,
-              _id: data._id
-            },
-            userId,
-            path: `/transformations/${data._id}`
-          })
+        const updatedImage = await updateImage({
+          image: {
+            ...imageData,
+            _id: data._id
+          },
+          userId,
+          path: `/transformations/${data._id}`
+        })
 
-          if(updatedImage) {
-            router.push(`/transformations/${updatedImage._id}`)
-          }
-        } catch (error) {
-          console.log(error);
+        if(updatedImage) {
+          router.push(`/transformations/${updatedImage._id}`)
         }
       }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save image. Please try again.",
+        duration: 5000,
+        className: "error-toast",
+      })
+    } finally {
+      setIsSubmitting(false)
     }
-
-    setIsSubmitting(false)
   }
   
   const onSelectFieldHandler = (value: string, onChangeField: (value:string) => void) => {
@@ -163,37 +150,62 @@ const TransformationForm = ({ action, data = null, userId, type, creditBalance, 
           [fieldName === 'prompt' ? 'prompt' : 'to' ]: value 
         }
       }))
-    }, 1000)(); // wait 1s before submitting (avoids submitting every keystroke)
+    }, 1000)();
       
     return onChangeField(value)
   }
 
-  // TODO: update creditFee to something else if needed
   const onTransformHandler = async () => {
-    // async, use transition hook coming from react (instead of state) : update without blocking UI
     setIsTransforming(true)
+    setHasTransformation(false)
+    setTransformedImages([])
+    setSelectedTransformedImage(null)
 
-    setTransformationConfig(
-      deepMergeObjects(newTransformation, transformationConfig)
-    )
+    try {
+      await updateCredits(userId, creditFee)
+      
+      setTransformationConfig(
+        deepMergeObjects(newTransformation, transformationConfig)
+      )
 
-    setNewTransformation(null)
+      const transformationResult = await replicateTransform(image.secureURL)
+      
+      if (transformationResult) {
+        const transformedImagesArray = Array.isArray(transformationResult) 
+          ? transformationResult.map(item => ({ cloudinaryUrl: item.image || item.cloudinaryUrl }))
+          : [{ cloudinaryUrl: transformationResult.cloudinaryUrl }];
 
-    startTransition(async () => {
-      // as soon as we start the transaction, subtract the creditFee
-      await updateCredits(userId, creditFee) // default creditFee
-    })
+        setTransformedImages(transformedImagesArray)
+        setSelectedTransformedImage(transformedImagesArray[0])
+        setHasTransformation(true)
+        setNewTransformation(null)
+
+        toast({
+          title: "Transformation applied",
+          description: "1 credit was deducted from your account",
+          duration: 5000,
+          className: "success-toast",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to apply transformation. Please try again.",
+        duration: 5000,
+        className: "error-toast",
+      })
+    } finally {
+      setIsTransforming(false)
+    }
   }
 
   useEffect(() => {
-    // if image exists & type = restore/remBack : change TransformationType
     if(image && (type === 'restore' || type === 'removeBackground')) {
       setNewTransformation(transformationType.config)
     }
   }, [image, transformationType.config, type])
 
   return (
-
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         {creditBalance < Math.abs(creditFee) && <InsufficientCreditsModal />}
@@ -289,14 +301,6 @@ const TransformationForm = ({ action, data = null, userId, type, creditBalance, 
               />
             )}
           />
-          <TransformedImage
-            image={image}
-            type={type}
-            title={form.getValues().title}
-            isTransforming={isTransforming}
-            setIsTransforming={setIsTransforming}
-            transformationConfig={transformationConfig}
-          />
         </div>
 
         <div className="flex flex-col gap-4">
@@ -308,13 +312,41 @@ const TransformationForm = ({ action, data = null, userId, type, creditBalance, 
           >
             {isTransforming ? 'Transforming...' : 'Apply Transformation'}
           </Button>
-          <Button 
-            type="submit"
-            className="submit-button capitalize"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Submitting...' : 'Save Image'}
-          </Button>
+
+          {isTransforming && (
+            <div className="flex-center gap-2">
+              <Image 
+                src="/assets/icons/spinner.svg"
+                width={24}
+                height={24}
+                alt="spinner"
+                className="animate-spin"
+              />
+              <p className="text-dark-400">Please wait...</p>
+            </div>
+          )}
+
+          {hasTransformation && transformedImages.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="h3-bold text-dark-600">
+                Transformed Images
+              </h3>
+              <ImageCarousel 
+                images={transformedImages}
+                type={type}
+                title={form.getValues().title}
+                baseImage={image}
+                onImageSelect={setSelectedTransformedImage}
+              />
+              <Button 
+                type="submit"
+                className="submit-button capitalize w-full"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Saving...' : 'Save Image'}
+              </Button>
+            </div>
+          )}
         </div>
       </form>
     </Form>

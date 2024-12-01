@@ -1,21 +1,26 @@
 "use client"
 
-import { dataUrl, debounce, download, getImageSize } from '@/lib/utils'
-import { CldImage, getCldImageUrl } from 'next-cloudinary'
-import { PlaceholderValue } from 'next/dist/shared/lib/get-img-props'
+import { dataUrl, getImageSize } from '@/lib/utils'
+import { CldImage } from 'next-cloudinary'
 import Image from 'next/image'
 import React from 'react'
 
-const TransformedImage = ({ image, type, title, transformationConfig, isTransforming, setIsTransforming, hasDownload = false }: TransformedImageProps) => {
+const TransformedImage = ({ 
+  image, 
+  type, 
+  title, 
+  transformationConfig, 
+  isTransforming, 
+  setIsTransforming, 
+  hasDownload = false,
+  transformedImage = null
+}: TransformedImageProps) => {
+
   const downloadHandler = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
     e.preventDefault();
-
-    download(getCldImageUrl({
-      width: image?.width,
-      height: image?.height,
-      src: image?.publicId,
-      ...transformationConfig
-    }), title)
+    if (transformedImage?.cloudinaryUrl) {
+      window.open(transformedImage.cloudinaryUrl, '_blank');
+    }
   }
 
   return (
@@ -25,7 +30,7 @@ const TransformedImage = ({ image, type, title, transformationConfig, isTransfor
           Transformed
         </h3>
 
-        {hasDownload && (
+        {hasDownload && transformedImage?.cloudinaryUrl && (
           <button 
             className="download-btn" 
             onClick={downloadHandler}
@@ -41,45 +46,38 @@ const TransformedImage = ({ image, type, title, transformationConfig, isTransfor
         )}
       </div>
 
-      {image?.publicId && transformationConfig ? (
+      {transformedImage?.cloudinaryUrl ? (
         <div className="relative">
           <CldImage 
             width={getImageSize(type, image, "width")}
             height={getImageSize(type, image, "height")}
-            src={image?.publicId}
-            alt={image.title}
-            sizes={"(max-width: 767px) 100vw, 50vw"}
-            placeholder={dataUrl as PlaceholderValue}
+            src={transformedImage.cloudinaryUrl}
+            alt={title || "transformed image"}
+            sizes="(max-width: 767px) 100vw, 50vw"
             className="transformed-image"
-            onLoad={() => {
-              // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-              setIsTransforming && setIsTransforming(false);
-            }}
-            onError={() => {
-              debounce(() => {
-                // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-                setIsTransforming && setIsTransforming(false);
-              }, 8000)() // CCCC DDDD if nothing happens after 8 seconds
-              // () = self-invoked debounce
-            }}
-            {...transformationConfig}
+            loading="lazy"
           />
-
-          {isTransforming && (
-            <div className="transforming-loader">
-              <Image 
-                src="/assets/icons/spinner.svg"
-                width={50}
-                height={50}
-                alt="spinner"
-              />
-              <p className="text-white/80">Please wait...</p>
-            </div>
+          {transformedImage.localPath && (
+            <p className="mt-2 text-sm text-gray-500">
+              Local copy saved at: {transformedImage.localPath}
+            </p>
           )}
         </div>
-      ): (
+      ) : (
         <div className="transformed-placeholder">
           Transformed Image
+        </div>
+      )}
+
+      {isTransforming && (
+        <div className="transforming-loader">
+          <Image 
+            src="/assets/icons/spinner.svg"
+            width={50}
+            height={50}
+            alt="spinner"
+          />
+          <p className="text-white/80">Please wait...</p>
         </div>
       )}
     </div>
