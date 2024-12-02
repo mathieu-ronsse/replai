@@ -301,6 +301,21 @@ const TransformationForm = ({ action, data = null, userId, type, creditBalance, 
               />
             )}
           />
+
+          {hasTransformation && transformedImages.length > 0 && (
+            <div className="flex-1 space-y-4">
+              <h3 className="h3-bold text-dark-600">
+                Results
+              </h3>
+              <ImageCarousel 
+                images={transformedImages}
+                type={type}
+                title={form.getValues().title}
+                baseImage={image}
+                onImageSelect={setSelectedTransformedImage}
+              />
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-4">
@@ -313,6 +328,16 @@ const TransformationForm = ({ action, data = null, userId, type, creditBalance, 
             {isTransforming ? 'Transforming...' : 'Apply Transformation'}
           </Button>
 
+          {hasTransformation && transformedImages.length > 0 && (
+            <Button 
+              type="submit"
+              className="submit-button capitalize"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Saving...' : 'Save Image'}
+            </Button>
+          )}
+
           {isTransforming && (
             <div className="flex-center gap-2">
               <Image 
@@ -323,28 +348,6 @@ const TransformationForm = ({ action, data = null, userId, type, creditBalance, 
                 className="animate-spin"
               />
               <p className="text-dark-400">Please wait...</p>
-            </div>
-          )}
-
-          {hasTransformation && transformedImages.length > 0 && (
-            <div className="space-y-4">
-              <h3 className="h3-bold text-dark-600">
-                Transformed Images
-              </h3>
-              <ImageCarousel 
-                images={transformedImages}
-                type={type}
-                title={form.getValues().title}
-                baseImage={image}
-                onImageSelect={setSelectedTransformedImage}
-              />
-              <Button 
-                type="submit"
-                className="submit-button capitalize w-full"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? 'Saving...' : 'Save Image'}
-              </Button>
             </div>
           )}
         </div>

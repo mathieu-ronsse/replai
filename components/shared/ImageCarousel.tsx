@@ -33,16 +33,25 @@ const ImageCarousel = ({ images, type, title, baseImage, onImageSelect }: ImageC
 
   if (!images.length) return null
 
+  const imageWidth = getImageSize(type, baseImage, "width")
+  const imageHeight = getImageSize(type, baseImage, "height")
+  const aspectRatio = imageWidth / imageHeight
+
   return (
     <div className="relative w-full">
-      <div className="relative h-[350px] w-full overflow-hidden rounded-lg">
+      <div 
+        className="relative w-full overflow-hidden rounded-lg"
+        style={{ 
+          paddingBottom: `${(1 / aspectRatio) * 100}%`
+        }}
+      >
         <CldImage
-          width={getImageSize(type, baseImage, "width")}
-          height={getImageSize(type, baseImage, "height")}
+          width={imageWidth}
+          height={imageHeight}
           src={images[currentIndex].cloudinaryUrl}
           alt={`${title} - ${currentIndex + 1}`}
           sizes="(max-width: 767px) 100vw, 50vw"
-          className="transformed-image"
+          className="absolute top-0 left-0 w-full h-full object-contain"
           loading="lazy"
         />
       </div>

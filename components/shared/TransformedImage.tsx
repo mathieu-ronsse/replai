@@ -15,6 +15,9 @@ const TransformedImage = ({
   hasDownload = false,
   transformedImage = null
 }: TransformedImageProps) => {
+  const imageWidth = getImageSize(type, image, "width")
+  const imageHeight = getImageSize(type, image, "height")
+  const aspectRatio = imageWidth / imageHeight
 
   const downloadHandler = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
     e.preventDefault();
@@ -47,16 +50,23 @@ const TransformedImage = ({
       </div>
 
       {transformedImage?.cloudinaryUrl ? (
-        <div className="relative">
-          <CldImage 
-            width={getImageSize(type, image, "width")}
-            height={getImageSize(type, image, "height")}
-            src={transformedImage.cloudinaryUrl}
-            alt={title || "transformed image"}
-            sizes="(max-width: 767px) 100vw, 50vw"
-            className="transformed-image"
-            loading="lazy"
-          />
+        <div className="relative w-full">
+          <div 
+            className="relative w-full overflow-hidden rounded-lg"
+            style={{ 
+              paddingBottom: `${(1 / aspectRatio) * 100}%`
+            }}
+          >
+            <CldImage 
+              width={imageWidth}
+              height={imageHeight}
+              src={transformedImage.cloudinaryUrl}
+              alt={title || "transformed image"}
+              sizes="(max-width: 767px) 100vw, 50vw"
+              className="absolute top-0 left-0 w-full h-full object-contain"
+              loading="lazy"
+            />
+          </div>
           {transformedImage.localPath && (
             <p className="mt-2 text-sm text-gray-500">
               Local copy saved at: {transformedImage.localPath}
